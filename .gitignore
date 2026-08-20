@@ -1,0 +1,59 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Uploaded files
+uploads/
+uploaded_files/
+
+# Generated data / vector databases
+data/
+chroma_db/
+faiss_index/
+
+# Model/cache files
+.cache/
+huggingface/
+models/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Academic PDFs / uploaded documents
+documents/*.pdf
+documents/
+
+# Chroma / vector database
+vectorstore/
+chroma_db/
+
+# Generated vector indexes
+*.bin
+*.sqlite3
