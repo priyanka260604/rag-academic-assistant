@@ -18,6 +18,17 @@ logging.getLogger("google.genai").setLevel(logging.ERROR)
 logging.getLogger("langchain_google_genai").setLevel(logging.ERROR)
 
 import streamlit as st
+
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
+
+st.set_page_config(
+    page_title="RAG Academic Assistant",
+    page_icon="🎓",
+    layout="wide"
+)
+
 # =========================================================
 # CUSTOM UI
 # =========================================================
@@ -67,19 +78,11 @@ import re
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+import chromadb
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 
 
-# =========================================================
-# PAGE CONFIGURATION
-# =========================================================
-
-st.set_page_config(
-    page_title="RAG Academic Assistant",
-    page_icon="🎓",
-    layout="wide"
-)
 
 
 # =========================================================
@@ -158,20 +161,27 @@ def get_embeddings():
 # =========================================================
 
 @st.cache_resource
+def get_chroma_client():
+    """
+    Create one persistent ChromaDB client.
+
+    This does not load the Hugging Face embedding model, so the
+    homepage can open without waiting for model initialization.
+    """
+    return chromadb.PersistentClient(path=VECTOR_DB_PATH)
+
+
+@st.cache_resource
 def get_vectorstore():
-
-    embeddings = get_embeddings()
-
-    vectorstore = Chroma(
+    """
+    Load the embedding model only when vector search or PDF
+    indexing is actually needed.
+    """
+    return Chroma(
         collection_name=COLLECTION_NAME,
-        embedding_function=embeddings,
-        persist_directory=VECTOR_DB_PATH
+        embedding_function=get_embeddings(),
+        client=get_chroma_client()
     )
-
-    return vectorstore
-
-
-vectorstore = get_vectorstore()
 
 
 # =========================================================
@@ -186,8 +196,6 @@ def get_llm():
         google_api_key=GOOGLE_API_KEY
     )
 
-
-llm = get_llm()
 
 
 # =========================================================
@@ -226,17 +234,18 @@ def clean_response(response):
 # =========================================================
 
 def get_document_count():
-
+    """
+    Return the number of stored chunks without loading embeddings
+    or fetching all document IDs.
+    """
     try:
-
-        data = vectorstore.get()
-
-        return len(
-            data.get("ids", [])
+        collection = get_chroma_client().get_collection(
+            name=COLLECTION_NAME
         )
+        return collection.count()
 
     except Exception:
-
+        # The collection may not exist before the first PDF upload.
         return 0
 
 
@@ -579,7 +588,7 @@ if uploaded_files:
 
                 if texts:
 
-                    vectorstore.add_texts(
+                    get_vectorstore().add_texts(
                         texts=texts,
                         metadatas=metadatas
                     )
@@ -704,7 +713,7 @@ if tool != "Select a tool":
                 "🔎 Finding important concepts..."
             ):
 
-                results = vectorstore.similarity_search(
+                results = get_vectorstore().similarity_search(
                     "important concepts definitions "
                     "formulas theories examples",
                     k=10
@@ -777,7 +786,7 @@ ACADEMIC CONTENT:
 
                     try:
 
-                        response = llm.invoke(
+                        response = get_llm().invoke(
                             quiz_prompt
                         )
 
@@ -1070,7 +1079,7 @@ ACADEMIC CONTENT:
             "🔎 Searching your academic documents..."
         ):
 
-            results = vectorstore.similarity_search(
+            results = get_vectorstore().similarity_search(
                 tool,
                 k=8
             )
@@ -1221,7 +1230,7 @@ Explain the concepts simply.
 
                 try:
 
-                    response = llm.invoke(
+                    response = get_llm().invoke(
                         prompt
                     )
 
@@ -1355,7 +1364,7 @@ if question:
                 "🔎 Searching your documents..."
             ):
 
-                results = vectorstore.similarity_search(
+                results = get_vectorstore().similarity_search(
                     question,
                     k=5
                 )
@@ -1431,7 +1440,7 @@ ANSWER:
                     "🤖 Generating answer..."
                 ):
 
-                    response = llm.invoke(
+                    response = get_llm().invoke(
                         prompt
                     )
 
