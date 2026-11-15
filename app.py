@@ -1,3 +1,22 @@
+
+import warnings
+import logging
+
+# Suppress AFC warning from Google GenAI SDK
+warnings.filterwarnings(
+    "ignore",
+    message=".*Direct use of automatic function calling.*"
+)
+
+# Suppress Gemini sampling warning
+warnings.filterwarnings(
+    "ignore",
+    message=".*uses fixed sampling defaults.*"
+)
+logging.getLogger("google").setLevel(logging.ERROR)
+logging.getLogger("google.genai").setLevel(logging.ERROR)
+logging.getLogger("langchain_google_genai").setLevel(logging.ERROR)
+
 import streamlit as st
 # =========================================================
 # CUSTOM UI
@@ -164,8 +183,7 @@ def get_llm():
 
     return ChatGoogleGenerativeAI(
         model=GEMINI_MODEL,
-        google_api_key=GOOGLE_API_KEY,
-        temperature=0.2
+        google_api_key=GOOGLE_API_KEY
     )
 
 
@@ -258,6 +276,24 @@ CONTENT:
         context_parts
     )
 
+# =========================================================
+# HELPER: BUILD CHAT HISTORY
+# =========================================================
+
+def build_chat_history():
+
+    history = []
+
+    for message in st.session_state.messages[-6:]:
+
+        role = message["role"].upper()
+        content = message["content"]
+
+        history.append(
+            f"{role}: {content}"
+        )
+
+    return "\n\n".join(history)
 
 # =========================================================
 # HELPER: EXTRACT JSON
